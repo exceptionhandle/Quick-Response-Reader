@@ -1,0 +1,8 @@
+[Activity]
+name      = QR Reader
+license   = GPLv2+
+icon      = activity-qrreader
+exec      = sugar-activity QRReader.QRReaderActivity
+mime_types = image/bmp;image/gif;image/jpeg;image/png;image/tiff;image/svg+xml
+activity_version = 1
+bundle_id = org.laptop.QRReaderActivity

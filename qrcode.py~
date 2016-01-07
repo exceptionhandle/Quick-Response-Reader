@@ -1,0 +1,910 @@
+##############################  functions  ####################
+import math
+from math import *
+import Image
+
+class start:
+  firstcoord=0;size_of_pattern=0;sequence_end_points=0;mid=0;mid1,mid2=0,0;D=0;CP=0;box=0;im=0;link=0;words=0;pix=0;mask=0;mode=0
+  def __init__(self,im):
+    self.read_image(im)
+    scanobj=scan(self.im)
+    self.process(scanobj)
+    md=decode(scanobj)
+    self.words=md.words
+    self.mask=md.mask
+    self.mode=md.mod
+
+  def read_image(self,im):
+    self.im=im
+    self.im=self.im.resize([100,100])
+    if(self.im.mode!="RGB"):
+        self.im=self.im.convert("RGB")
+    self.pix=self.im.load()
+    
+    
+    
+  def process(self,scanobj):
+    
+    self.D,self.im,self.mid = scanobj.detect()
+
+    self.firstcoord=scanobj.findfirst()
+    #####shifts points to origin
+    self.mid=scanobj.translate_mid_points(self.firstcoord,self.mid)
+    self.sequence_end_points,self.mid1,self.mid2=scanobj.findboxmid1(0,0)
+    self.width=math.fabs(self.sequence_end_points[0][0]-self.sequence_end_points[1][0])
+    
+    #####module size CP
+    self.CP =self.width/7
+    self.X=self.CP
+    ######## module size
+    self.mod = self.CP
+    #####version
+    self.V = ceil(((self.D/self.X)-10)/4)
+    print "version :",self.V
+    #### final size of the pattern
+    self.size_of_pattern = scanobj.findlast()
+    
+    self.box = (self.firstcoord[0],self.firstcoord[1],self.size_of_pattern[0],self.size_of_pattern[1])
+    scanobj.im = scanobj.im.crop(self.box)
+    scanobj.pixels=int((self.V-1)*4+21)
+    scanobj.im=scanobj.im.resize([scanobj.pixels*3,scanobj.pixels*3])
+    scanobj.mod=3
+    scanobj.pix=scanobj.im.load()
+    scanobj.scan_bits(self.V)
+
+class scan:
+  im=0;pix=0;mod=0;info=[];module_info=[];pixels=0;
+  def __init__(self,im):
+      self.im=im
+      self.pix=im.load()
+  
+      
+  def findfirst(self):
+      for i in range(self.im.size[0]):
+	  for j in range(self.im.size[1]):
+	      if ( self.pix[i,j][0] in range(0,50) and self.pix[i,j][1] in range(0,50) and self.pix[i,j][2] in range(0,50)):
+		  coord=i,j
+		  return coord
+  
+  def findlast(self):
+      i=self.im.size[0]
+      while i > 0:
+	  i=i-1
+	  j=self.im.size[1]
+	  while j > 0:
+	      j=j-1
+	      if ( self.pix[i,j][0]<150 and self.pix[i,j][1]<150 and self.pix[i,j][2]<150):
+		  coord=[i,j]
+		  return coord
+	      
+  
+  
+  def trans(self,xaxis,yaxis):
+      for i in range(yaxis,self.im.size[0]):
+	  for j in range(xaxis,self.im.size[1]):
+	      self.pix[i-xaxis,j-yaxis]=self.pix[i,j]
+      return self.pix
+  def vertical_bottom_scan(self,width,height,hor_ver):
+	  x=0;y=0
+	  frstpxl,secpxl,first,second,third,forth,fifth=0,0,0,0,0,0,0
+	  y=height
+	  while y > 0:
+	      y=y-1
+	      RGB =self.pix[width,y]
+	      if(RGB>(150,150,150)):
+		continue
+	      elif(RGB<(150,150,150)):
+		break
+	  if(y<self.im.size[1]):
+	      while y > 0:
+		y=y-1
+		RGB =self.pix[width,y]
+		if frstpxl == 0:
+		    frstpxl = [width,y]
+		if(RGB<(150,150,150)):
+		    first=first+1
+		elif(RGB>(150,150,150)):
+		    break
+	  if(y<self.im.size[1] and first!=0):
+	      while y > 0:
+		y=y-1
+		RGB =self.pix[width,y]
+		if(RGB>(150,150,150)):
+		    second=second+1
+		elif(RGB<(150,150,150)):
+		    break
+	  if(y<self.im.size[1] and second!=0):
+	      while y > 0:
+		y=y-1
+		RGB =self.pix[width,y]
+		if(RGB<(150,150,150)):
+		    third=third+1
+		elif(RGB>(150,150,150)):
+		    break
+	  if(y<self.im.size[1] and third!=0):
+	      while y > 0:
+		y=y-1
+		RGB =self.pix[width,y]
+		if(RGB>(150,150,150)):
+		    forth=forth+1
+		elif(RGB<(150,150,150)):
+		    break
+	  if(y<self.im.size[1] and forth!=0):
+	      while y > 0:
+		y=y-1
+		RGB =self.pix[width,y]
+		if(RGB<(150,150,150)):
+		    fifth=fifth+1
+		elif(RGB>(150,150,150)):
+		    break
+	  if(first!= 0 and second !=0 and third !=0 and forth !=0 and fifth !=0):	                    
+	      if(-2<first-second<2 and -2<forth-fifth<2 and (3<=third/first<=4 or 3<=third/second<=4 or 3<=third/forth<=4 or 3<=third/fifth<=4 )):
+		secpxl=[width,y]
+  
+	  
+  #################### for vertical scanning ########################
+
+	  return frstpxl,secpxl
+      
+  def vertical_up_scan(self,width,height,hor_ver):
+	  hor=0;x=0;y=0
+	  frstpxl,secpxl,first,second,third,forth,fifth=0,0,0,0,0,0,0
+	  y=height
+	  for y in range(y,self.im.size[1]):
+	      RGB =self.pix[width,y]
+	      if(RGB>(150,150,150)):
+		continue
+	      else:
+		break
+	  if(y<self.im.size[1]):
+	      for y in range(y,self.im.size[1]):
+		RGB =self.pix[width,y]
+		if frstpxl == 0:
+		    frstpxl = [width,y]
+		if(RGB<(150,150,150)):
+		    first=first+1
+		else:
+		    break
+	  if(y<self.im.size[1] and first!=0):
+	      for y in range(y,self.im.size[1]):
+		RGB =self.pix[width,y]
+		if(RGB>(150,150,150)):
+		    second=second+1
+                else:
+		    break
+	  if(y<self.im.size[1] and second!=0):
+	      for y in range(y,self.im.size[1]):
+		RGB =self.pix[width,y]
+		if(RGB<(150,150,150)):
+		  third=third+1
+		else:
+                  break
+	  if(y<self.im.size[1] and third!=0):
+	      for y in range(y,self.im.size[1]):
+		RGB =self.pix[width,y]
+		if(RGB>(150,150,150)):
+		    forth=forth+1
+		else:
+		    break
+	  if(y<self.im.size[1] and forth!=0):
+	      for y in range(y,self.im.size[1]):
+		RGB =self.pix[width,y]
+		if(RGB<(150,150,150)):
+		    fifth=fifth+1
+		else:
+		    break
+	  if(first!= 0 and second !=0 and third !=0 and forth !=0 and fifth !=0):	                    
+	      if(-2<first-second<2 and -2<forth-fifth<2 and (3<=third/fifth<=4 or 3<=third/first<=4 or 3<=third/second<=4 or 3<=third/forth<=4) ):
+		secpxl=[width,y]
+		  
+	  return frstpxl,secpxl
+  
+  def posloop(self,width,height,hor_ver):
+      hor=0;x=width;y=height
+      frstpxl,secpxl,first,second,third,forth,fifth=0,0,0,0,0,0,0
+      if hor_ver == hor:
+  ############### for horizontal scanning ######################
+	  for x in range(x,self.im.size[0]):
+	      RGB = self.pix[x,height]
+	      if(RGB>(150,150,150)):
+		continue
+	      else:
+		break
+	  if(x<self.im.size[0]):
+	      for x in range(x,self.im.size[0]):
+		RGB =self.pix[x,height]
+		if frstpxl == 0:
+		    frstpxl = [x,height]
+		if(RGB<(150,150,150)):
+		    first=first+1
+		else:
+		    break
+	  if(x<self.im.size[0] and first!=0):
+	      for x in range(x,self.im.size[0]):
+		RGB =self.pix[x,height]
+		if(RGB>(150,150,150)):
+		    second=second+1
+		else:
+		    break
+	  if(x<self.im.size[0] and second!=0):
+	      for x in range(x,self.im.size[0]):
+		RGB =self.pix[x,height]
+		if(RGB<(150,150,150)):
+		    third=third+1
+		else:
+		    break
+	  if(x<self.im.size[0] and third!=0):
+	      for x in range(x,self.im.size[0]):
+		RGB =self.pix[x,height]
+		if(RGB>(150,150,150)):
+		    forth=forth+1
+		else:
+		    break
+	  if(x<self.im.size[0] and forth!=0):
+	      for x in range(x,self.im.size[0]):
+		RGB =self.pix[x,height]
+		if(RGB<(150,150,150)):
+		    fifth=fifth+1
+		else:
+		    break
+	  if(first!= 0 and second !=0 and third !=0 and forth !=0 and fifth !=0):	                    
+	      if(-2<first-second<2 and -2<forth-fifth<2 and (3<=third/fifth<=4 or 3<=third/first<=4 or 3<=third/second<=4 or 3<=third/forth<=4) ):
+		secpxl=[x,height]
+      else:
+  ############### for vertical scanning ######################
+	  if height >= self.im.size[1]/2:
+	      frstpxl,secpxl = self.vertical_bottom_scan(width,self.im.size[1]-1,hor_ver)
+	  else:
+	      frstpxl,secpxl = self.vertical_up_scan(width,0,hor_ver)
+      return frstpxl,secpxl
+  
+  def negloop(self,width,height,hor_ver):
+        hor=0;y=height;x=width
+        frstpxl,secpxl,first,second,third,forth,fifth=0,0,0,0,0,0,0
+        if hor_ver == hor:
+  ############### for horizontal scanning ######################
+  
+	  while x > 0:
+	      x=x-1
+	      RGB = self.pix[x,height]
+	      if(RGB>(150,150,150)):
+		continue
+	      elif(RGB<(150,150,150)):
+		break
+	  while x > 0:
+	      x=x-1
+	      RGB =self.pix[x,height]
+		    
+	      if(RGB<(150,150,150)):
+		first=first+1
+		if frstpxl == 0:
+		    frstpxl = [x,height]
+	      elif(RGB>(150,150,150)):
+		break
+	  if( first!=0):
+	      while x > 0:
+		x=x-1
+		RGB =self.pix[x,height]
+		if(RGB>(150,150,150)):
+		    second=second+1
+		elif(RGB<(150,150,150)):
+		    break
+	  if(second!=0):
+	      while x > 0:
+		x=x-1
+		RGB =self.pix[x,height]
+		if(RGB<(150,150,150)):
+		    third=third+1
+		elif(RGB>(150,150,150)):
+		    break
+	  if(third!=0):
+	      while x > 0:
+		x=x-1
+		RGB =self.pix[x,height]
+		if(RGB>(150,150,150)):
+		    forth=forth+1
+		elif(RGB<(150,150,150)):
+		    break
+	  if(forth!=0):
+	      while x > 0:
+		x=x-1
+		RGB =self.pix[x,height]
+		if(RGB<(150,150,150)):
+		    fifth=fifth+1
+		elif(RGB>(150,150,150)):
+		    break
+	  if(first!= 0 and second !=0 and third !=0 and forth !=0 and fifth !=0):	                    
+	      if(-2<first-second<2 and -2<forth-fifth<2 and (3<=third/fifth<=4 or 3<=third/first<=4 or 3<=third/second<=4 or 3<=third/forth<=4) ):
+		secpxl=[x,height]  	       
+	else:
+  ############### for vertical scanning ######################
+	  if height >= self.im.size[1]/2:
+	      frstpxl,secpxl = self.vertical_bottom_scan(width,self.im.size[1]-1,hor_ver)
+		  
+	  else:
+	      frstpxl,secpxl = self.vertical_up_scan(width,0,hor_ver)
+  
+        return frstpxl,secpxl
+  def assign_val(self,val1,val2,horizontal):
+      if val2 != 0:
+		if horizontal[0] == 0:
+		  horizontal[0],horizontal[1]=val1,val2
+		else:
+		  horizontal[2],horizontal[3]=val1,val2
+      return horizontal           
+  
+  def max_of_2(self,a,b):
+      if a>b:
+	  return b,a
+      else:
+	  return a,b
+  
+  def find_mid(self,horizontal1):
+      return (((horizontal1[0][0]+horizontal1[1][0])/2+(horizontal1[2][0]+horizontal1[3][0])/2)/2,((horizontal1[0][1]+horizontal1[1][1])/2+(horizontal1[2][1]+horizontal1[3][1])/2)/2)          
+  
+  def find_avg(self,hor,ver):
+      return [(hor[0]+ver[0])/2,(hor[1]+ver[1])/2]
+  
+  def findboxmid2(self,width,height):
+      left=0
+      mid1,mid2=0,0
+      val1,val2=0,0
+      horizontal1,horizontal2=[0,0,0,0],[0,0,0,0]
+      vertical1,vertical2=[0,0,0,0],[0,0,0,0]
+      verti_scan,hori_scan=1,0
+      flag=0
+      ################# horizontal traversal ###########################
+      maxcnt1,maxcnt2=0,0
+      while height > 0:
+	  height = height - 1
+	  ########## search for first finder pattern ##########
+	  if vertical1[3] == 0:
+	    val1,val2 = self.negloop(self.im.size[0]-1,height,hori_scan)
+	    if val2 !=0:
+		maxcnt1 = maxcnt1+1
+	    horizontal1=self.assign_val(val1,val2,horizontal1)
+	    ################# vertical1 traversal  
+	    if(val2==0 and horizontal1[3]!=0):    
+		a,b=self.max_of_2(horizontal1[0][0] , horizontal1[1][0])
+		for width in range(a,b):
+		  val1,val2=self.negloop(width,horizontal1[0][1],verti_scan)
+		  vertical1=self.assign_val(val1,val2,vertical1)
+		  if vertical1[3]!=0 and val2==0: 
+		      break
+		if horizontal1[3]!=0 and vertical1[3]!=0:
+		  hormid1=self.find_mid(horizontal1)
+		  vermid1=self.find_mid(vertical1)
+		  mid1=self.find_avg(hormid1,vermid1)
+	  ########## search for second finder pattern ##########
+  
+	  else:
+	    val1,val2=self.negloop(self.im.size[0]-1,height,hori_scan)
+	    if val2!=0:
+		maxcnt2=maxcnt2+1
+	    horizontal2=self.assign_val(val1,val2,horizontal2)
+	    ################# vertical2 traversal ##########################
+	    if(val2==0 and horizontal2[3]!=0):   
+		a,b=self.max_of_2(horizontal2[0][0] , horizontal2[1][0])
+		for width in range(a,b):
+		  val1,val2=self.negloop(width,horizontal2[0][1],verti_scan)
+		  vertical2=self.assign_val(val1,val2,vertical2)
+		  if vertical2[3]!=0 and val2==0: 
+		      break
+		if horizontal2[3]!=0 and vertical2[3]!=0:
+		  hormid2=self.find_mid(horizontal2)
+		  vermid2=self.find_mid(vertical2)
+		  mid2=self.find_avg(hormid2,vermid2)
+  
+  ########### to avoid replacing second finder box with the third finder box
+	  if flag == 1:
+	    break
+      if -1<=maxcnt1-maxcnt2<=1:
+	  return horizontal1,mid1,mid2
+      elif maxcnt1>maxcnt2:
+	  return horizontal1,mid1,0
+      else:
+	  return horizontal1,mid2,0
+  
+  def findboxmid1(self,width,height):
+      left=0
+      mid1,mid2=0,0
+      val1,val2=0,0
+      horizontal1,horizontal2=[0,0,0,0],[0,0,0,0]
+      vertical1,vertical2=[0,0,0,0],[0,0,0,0]
+      verti_scan,hori_scan=1,0
+      flag=0
+      maxcnt1,maxcnt2=0,0
+      ################# horizontal traversal ###########################
+      for height in range(height,self.im.size[1]):
+	  ########## search for first finder pattern ##########
+	  if vertical1[3] == 0:
+	    val1,val2 = self.posloop(0,height,hori_scan)
+	    if val2 !=0:
+		maxcnt1 = maxcnt1+1
+	    horizontal1=self.assign_val(val1,val2,horizontal1)
+	    ################# vertical1 traversal  
+	    if(val2==0 and horizontal1[3]!=0):    
+	    
+		a,b=self.max_of_2(horizontal1[0][0] , horizontal1[1][0])
+		for width in range(a,b):
+		  val1,val2=self.posloop(width,0,verti_scan)  
+		  vertical1=self.assign_val(val1,val2,vertical1)
+		  if vertical1[3]!=0 and val2==0: 
+                    break
+		if horizontal1[3]!=0 and vertical1[3]!=0:
+		  hormid1=self.find_mid(horizontal1)
+		  vermid1=self.find_mid(vertical1)
+		  mid1=self.find_avg(hormid1,vermid1)
+	  ########## search for second finder pattern ##########
+  
+	  else:
+  
+	    val1,val2 = self.posloop(0,height,hori_scan)
+	    if val2!=0:
+		maxcnt2=maxcnt2+1
+	    horizontal2=self.assign_val(val1,val2,horizontal2)
+	    ################# vertical2 traversal ##########################
+	    if(val2==0 and horizontal2[3]!=0):   
+		a,b=self.max_of_2(horizontal2[0][0] , horizontal2[1][0])
+		for width in range(a,b):
+		  val1,val2=self.posloop(width,self.im.size[1]-1,verti_scan)
+		  vertical2=self.assign_val(val1,val2,vertical2)
+		  if vertical2[3]!=0 and val2==0: 
+		      flag=1
+		      break
+		if horizontal2[3]!=0 and vertical2[3]!=0:
+		  hormid2=self.find_mid(horizontal2)
+		  vermid2=self.find_mid(vertical2)
+		  mid2=self.find_avg(hormid2,vermid2)
+  
+  ########### to avoid replacing second finder box with the third finder box
+	  if flag == 1:
+	    break
+      if -1<=maxcnt1-maxcnt2<=1:
+	  return horizontal1,mid1,mid2
+      elif maxcnt1>maxcnt2:
+	  return horizontal1,mid1,0
+      else:
+	  return horizontal1,mid2,0
+  
+  def detect(self):
+      mid2,mid3,mid4=0,0,0
+      left,right=0,1
+      extra_var,mid1,mid2=self.findboxmid1(0,0)
+  
+      extra_var,mid3,mid4=self.findboxmid2(self.im.size[0]-1,self.im.size[1]-1)
+      
+      mid_width = 0
+      if mid1==0:
+	midx,midy,midz = mid4,mid3,mid2; mid_width = [mid2[0]-mid3[0],mid2[1]-mid3[1]]
+      elif mid2==0:
+	midx,midy,midz = mid3,mid1,mid4; mid_width = [mid3[0]-mid4[0],mid3[1]-mid4[1]]
+      elif mid3==0:
+	midx,midy,midz = mid2,mid1,mid4; mid_width = [mid1[0]-mid2[0],mid1[1]-mid2[1]]
+      elif mid4==0:
+	midx,midy,midz = mid1,mid2,mid3; mid_width = [mid1[0]-mid2[0],mid1[1]-mid2[1]]
+      distance_12=self.distance(midx,midy)
+      distance_23=self.distance(midy,midz)
+      distance_31=self.distance(midz,midx)
+  
+      high_dis=self.max(distance_12,distance_23,distance_31)
+      slope=0;D=0
+      if high_dis==-1:
+	slope=self.find_slope(midx,midy,midz);D=distance_23
+      elif high_dis==0:
+	slope=self.find_slope(midy,midz,midx);D=distance_12
+      elif high_dis==1:
+	slope=self.find_slope(midx,midz,midy);D=distance_12
+      self.im=self.im.rotate(slope-45)
+      return D,self.im,[midx,midy,midz]
+      
+  def find_slope(self,a,b,c):
+      if(self.isleft(a,b,c)!=1):
+	return -math.degrees(math.atan((b[1]-a[1])/(b[0]-a[0])))
+      return math.degrees(math.atan((b[1]-a[1])/(b[0]-a[0])))
+  
+  def isleft(self,a,b,c):
+      return ((b[0] - a[0])*(c[1] - a[1]) - (b[1] - a[1])*(c[0] - a[0])) > 0;
+  
+  def max(self,a,b,c):
+      high=0
+      if(a>b):
+	high=-1
+      else:
+	high=0
+      if(a<c and b<c):
+	return 1
+      return high
+      
+  def translate_mid_points(self,firstcoord,mid):
+      mid[0][0]=mid[0][0]-firstcoord[0]
+      mid[0][1]=mid[0][1]-firstcoord[1]
+      mid[1][0]=mid[1][0]-firstcoord[0]
+      mid[1][1]=mid[1][1]-firstcoord[1]
+      mid[2][0]=mid[2][0]-firstcoord[0]
+      mid[2][1]=mid[2][1]-firstcoord[1]
+      return mid
+      
+  def distance(self,a,b):
+      pt1x, pt1y =a[0] ,a[1]
+      pt2x, pt2y =b[0] ,b[1]
+      dis = sqrt(((pt2x-pt1x)**2) + ((pt2y - pt1y)**2))
+      return dis
+      
+  def check_color(self,RGB):
+    if RGB > (150,150,150):
+      return 0
+    else:
+      return 1
+      
+  
+  
+  def invalid_bits(self,V):
+    newmoduleinfo=[]
+    for x in self.module_info:
+	net_row=x[0][1]
+	net_col=x[0][0]
+	if V < 2:
+	    if ((net_row<9 and net_col <9) or (net_col <9 and net_row >self.pixels-1 - 8) or (net_col>self.pixels-1-8 and net_row<9) ):
+	      continue
+	else:
+	    if ((net_row<9 and net_col <9) or (net_col <9 and net_row >self.pixels-1 - 8) or (net_col>self.pixels-1-8 and net_row<9) or ((24 - 9  < net_col <= self.pixels-1 - 4) and (self.pixels-1 - 9 < net_row <= self.pixels-1 - 4))):
+	      continue
+	newmoduleinfo.append(x)
+	self.info.append(x[1])
+    self.module_info=newmoduleinfo
+    return newmoduleinfo
+  
+  ################################################################################
+  def scan_bits(self,V):
+    traverse = - self.mod  ############# module size
+    col = self.pixels*self.mod - self.mod; x_axis = self.mod/2; y_axis = self.pixels*self.mod - self.mod/2
+    net_col = self.pixels-1; net_row = self.pixels-1;
+    bits=0;
+    while (x_axis+col+traverse) >= 0 and (x_axis+col) >= 0:
+	while 1:
+	      if net_row < 0 or y_axis<0:  # height
+		y_axis=self.mod/2
+		net_row = net_row + 1
+		break
+	      if (net_row > self.pixels-1) :#### height
+		y_axis=self.pixels*self.mod-self.mod/2
+		net_row = net_row - 1
+		break
+	      if net_row == 6:
+		net_row = net_row + traverse/self.mod
+		y_axis = y_axis + traverse
+	      if net_col ==5:
+		net_col=4
+		col=col-self.mod
+	      if traverse < 0:
+		self.module_info.append([[net_col,net_row],self.check_color(self.pix[col+x_axis,y_axis])])
+		self.module_info.append([[net_col-1,net_row],self.check_color(self.pix[col+x_axis+traverse,y_axis])])
+	      else:
+		self.module_info.append([[net_col+1,net_row],self.check_color(self.pix[col+x_axis+traverse,y_axis])])
+		self.module_info.append([[net_col,net_row],self.check_color(self.pix[col+x_axis,y_axis])])
+	      
+	      bits = bits + 2
+	      net_row=net_row+traverse/self.mod
+	      y_axis=y_axis+traverse
+	traverse=-traverse
+	if traverse < 0:
+	  net_col= net_col-1
+	  col=col-self.mod
+	else:
+	  net_col= net_col-3
+	  col=col-3*self.mod
+    self.module_info=self.invalid_bits(V)
+    return self.module_info,self.info,bits      
+  ############################################################################
+  ###############  code  ###############  Deepak
+class decode:
+  data=[];info=[];module_info=[];im=0;pix=0;mod_ind=0;charcount=0;mod=0;words=0;mask=0
+  def __init__(self,scanobj):
+      self.data=scanobj.info
+      self.module_info=scanobj.module_info
+      self.im=scanobj.im
+      self.pix=scanobj.im.load()
+      self.mod=scanobj.mod
+      print len(self.module_info)==len(self.data)
+      self.masking()
+      self.findmode()
+      self.findCharcnt()
+      self.remove_pad_bits()
+      self.decode_words()
+      self.printword()
+
+  def decode_words(self):
+      if self.mod_ind == 'Alphanumeric mode':
+          self.words = self.Alphamode()
+      elif self.mod_ind == 'Numeric mode':# or mode_ind == 'Byte mode':
+          self.words = self.Numericalfindinfo()
+      elif self.mod_ind == 'Byte mode':
+          self.words = self.Bytemode()
+
+  def findmode(self):
+      self.mod_ind=''
+      k = len(self.data)
+      for i in range(4):
+	  self.mod_ind = self.mod_ind + str(self.data[0])
+	  self.data.pop(0)
+	  
+      if self.mod_ind == '0001':
+	self.mod_ind = "Numeric mode"
+      elif self.mod_ind == '0010':
+	self.mod_ind = "Alphanumeric mode"
+      elif self.mod_ind == '0100':
+	self.mod_ind = "Byte mode"
+      elif self.mod_ind == '1000':
+	self.mod_ind = "Kanji mode"
+      elif self.mod_ind == '0111':
+	self.mod_ind = "ECI mode"
+	
+      return self.mod_ind,self.data
+  def findCharcnt(self):
+  ##### till version 6
+      if self.mod_ind=="Byte mode":
+	no_of_bits = 8
+      if self.mod_ind=="Alphanumeric mode":
+	no_of_bits = 9
+      if self.mod_ind=="Numeric mode":
+	no_of_bits = 10
+
+      for i in range(no_of_bits):
+        self.charcount=self.charcount*10+self.data[0]
+        self.data.pop(0)
+      self.charcount = int(str(self.charcount),2)    
+      
+      return self.charcount,self.data
+  
+  def remove_pad_bits(self):
+      len_info = len(self.data)
+  
+      self.info=[]
+      while self.charcount<len_info/8:
+	for i in range(8):
+	    self.data.pop(len_info-1)
+	    len_info=len_info-1
+      k = len(self.data)
+      q=int(floor(k/8))
+      pad1=str(11101100)
+      pad2=str(00010001)
+      
+      for i in range(q):
+	  sub_info=''
+	  for j in range(8):
+	      sub_info=sub_info+str(self.data[i*8+j])
+	  self.info.append(sub_info)
+      len_info = len(self.info)
+      while (self.info[len_info-1]==pad2 or self.info[len_info-1]==pad1):
+	  self.info.pop(len_info-1)
+      self.data=self.info
+  
+  def Alphamode(self):
+      q=len(self.info)
+      x = 0
+      a = []
+      for i in range(q):
+	  val=''
+	  for y in range(8):
+	      val=val+self.info[i][y]
+	  a.append(int(val,2)/45)
+	  a.append(int(val)%45)
+	  x=x+2
+  
+  
+      arr=[0,1,2,3,4,5,6,7,8,9,"A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"," ","$","%","*","+","-",".","/",":"]
+      words=''
+      for i in range(x-1):
+	  words = words + str(arr[a[i]])
+      return words
+      
+  def Bytemode(self):
+      q=len(self.info)
+      words=''
+      for i in range(q):
+	words=words+chr(int(str(self.info[i]),2))
+
+      return words
+  ################################################################################
+  def Numericalfindinfo(self):
+      l=len(self.data)
+      q=int(floor(l/8))
+      ##getBin = lambda x, n: x >= 0 and str(bin(x))[2:].zfill(n) or "-" + str(bin(x))[3:].zfill(n)
+      words=''
+      for i in range(0,q):
+	      words=words+chr(int(str(self.data[i]),2))
+      return words
+  ##############################     vaibhav   
+  def masking(self):
+      j= 8*self.mod + self.mod/2  #for 15th bit first
+      i = self.mod/2
+      k=0
+      a=''
+      len_info=len(self.data)
+      while(i <= 9*self.mod):      #vertical scan first
+	      if(6*self.mod < i < 7*self.mod): #skip timing pattern
+		  i=i+self.mod
+		  continue
+	      RGB = self.pix[i,j]
+	      if(RGB==(0,0,0)):
+		  a=a+'1'
+	      else:
+		  a=a+'0'
+	      i=i+self.mod
+	      k=k+1
+    
+      j=j - self.mod; i = i - self.mod
+      while(j >= 0):		  #horizontal scan
+	  if(6*self.mod < j < 7*self.mod): #skip timing pattern
+	      j=j-self.mod
+	      continue
+	  RGB = self.pix[i,j]
+	  if(RGB==(0,0,0)):
+		  a=a+'1'
+	  else:
+		  a=a+'0'
+	  j=j-self.mod
+	  k=k+1
+      print 'mask pattern :',a
+      self.mask = a
+      mask = 0
+      if(a=='111011111000100'):
+	  error_level='L'
+	  mask=0
+      elif(a=='111001011110011'):
+	  error_level='L'
+	  mask=1
+      elif(a=='111110110101010'):
+	  error_level='L'
+	  mask=2
+      elif(a=='111100010011101'):
+	  error_level='L'
+	  mask=3
+      elif(a=='110011000101111'):
+	  error_level='L'
+	  mask=4
+      elif(a=='110001100011000'):
+	  error_level='L'
+	  mask=5
+      elif(a=='110110001000001'):
+	  error_level='L'
+	  mask=6
+      elif(a=='110100101110110'):
+	  error_level='L'
+	  mask=7
+      elif(a=='101010000010010'):
+	  error_level='M'
+	  mask=0
+      elif(a=='101000100100101'):
+	  error_level='M'
+	  mask=1
+      elif(a=='101111001111100'):
+	  error_level='M'
+	  mask=2
+      elif(a=='101101101001011'):
+	  error_level='M'
+	  mask=3
+      elif(a=='100010111111001'):
+	  error_level='M'
+	  mask=4
+      elif(a=='100000011001110'):
+	  error_level='M'
+	  mask=5
+      elif(a=='100111110010111'):
+	  error_level='M'
+	  mask=6
+      elif(a=='100101010100000'):
+	  error_level='M'
+	  mask=7
+      elif(a=='011010101011111'):
+	  error_level='Q'
+	  mask=0
+      elif(a=='011000001101000'):
+	  error_level='Q'
+	  mask=1
+      elif(a=='011111100110001'):
+	  error_level='Q'
+	  mask=2
+      elif(a=='011101000000110'):
+	  error_level='Q'
+	  mask=3
+      elif(a=='010010010110100'):
+	  error_level='Q'
+	  mask=4
+      elif(a=='010000110000011'):
+	  error_level='Q'
+	  mask=5
+      elif(a=='010111011011010'):
+	  error_level='Q'
+	  mask=6
+      elif(a=='010101111101101'):
+	  error_level='Q'
+	  mask=7
+      elif(a=='001011010001001'):
+	  error_level='H'
+	  mask=0
+      elif(a=='001001110111110'):
+	  error_level='H'
+	  mask=1
+      elif(a=='001110011100111'):
+	  error_level='H'
+	  mask=2
+      elif(a=='001100111010000'):
+	  error_level='H'
+	  mask=3
+      elif(a=='000011101100010'):
+	  error_level='H'
+	  mask=4
+      elif(a=='000001001010101'):
+	  error_level='H'
+	  mask=5
+      elif(a=='000110100001100'):
+	  error_level='H'
+	  mask=6
+      elif(a=='000100000111011'):
+	  error_level='H'
+	  mask=7
+  ##################################Release Masking##############################################
+      if mask == 0 :
+  #### array with  coordinate information and bit information
+	  for iterator in range(len_info):
+		  horizontal_coord = self.module_info[iterator][0][0]
+		  vertical_coord = self.module_info[iterator][0][1]
+		  if((vertical_coord+horizontal_coord)%2==0):
+			  self.data[iterator]=self.data[iterator]^1			
+      if(mask==1):
+  #### array with  coordinate information and bit information
+	  for iterator in range(len_info):
+		  horizontal_coord = self.module_info[iterator][0][0]
+		  vertical_coord = self.module_info[iterator][0][1]
+		  if((vertical_coord)%2==0):
+			  self.data[iterator]=self.data[iterator]^1
+      elif(mask==2):
+  #### array with  coordinate information and bit information
+	  for iterator in range(len_info):
+		  horizontal_coord = self.module_info[iterator][0][0]
+		  vertical_coord = self.module_info[iterator][0][1]
+		  if((horizontal_coord)%3==0):
+			  self.data[iterator]=self.data[iterator]^1
+      elif(mask==3):
+  #### array with  coordinate information and bit information
+	  for iterator in range(len_info):
+		  horizontal_coord = self.module_info[iterator][0][0]
+		  vertical_coord = self.module_info[iterator][0][1]
+		  if((vertical_coord+horizontal_coord)%3==0):
+			  self.data[iterator]=self.data[iterator]^1
+      elif(mask==4):
+    #### array with  coordinate information and bit information
+	  for iterator in range(len_info):
+		  horizontal_coord = self.module_info[iterator][0][0]
+		  vertical_coord = self.module_info[iterator][0][1]
+		  if (math.floor(vertical_coord/2) + math.floor(horizontal_coord/3)) % 2 == 0 :
+			  self.data[iterator]=self.data[iterator]^1
+      elif(mask==5):
+  #### array with  coordinate information and bit information
+	  for iterator in range(len_info):
+		  horizontal_coord = self.module_info[iterator][0][0]
+		  vertical_coord = self.module_info[iterator][0][1]
+		  if(((vertical_coord*horizontal_coord)%2) + ((vertical_coord*horizontal_coord)%3)==0):
+			  self.data[iterator]=self.data[iterator]^1
+      elif(mask==6):
+  #### array with  coordinate information and bit information
+	  for iterator in range(len_info):
+		  horizontal_coord = self.module_info[iterator][0][0]
+		  vertical_coord = self.module_info[iterator][0][1]
+		  condition = (vertical_coord*horizontal_coord)
+		  if((condition%2 + condition%3)%2==0):
+			  self.data[iterator]=self.data[iterator]^1
+      elif(mask==7):
+  #### array with  coordinate information and bit information
+	  for iterator in range(len_info):
+		  horizontal_coord = self.module_info[iterator][0][0]
+		  vertical_coord = self.module_info[iterator][0][1]
+		  if((((vertical_coord+horizontal_coord)%2) + ((vertical_coord*horizontal_coord)%3))%2==0):
+			  self.data[iterator]=self.data[iterator]^1
+      return self.data,error_level
+  def printword(self):
+      #webbrowser.open(self.words)
+      print "word found : ",self.words
+
